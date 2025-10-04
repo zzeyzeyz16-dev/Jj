@@ -94,20 +94,6 @@ if not energy then
     return
 end
 
- -- Add a close button
-‎    local closeBtn = Instance.new("TextButton", ScreenGui)
-‎    closeBtn.Size = UDim2.new(0,100,0,30)
-‎    closeBtn.Position = UDim2.new(0.5,-50,0.1,70)
-‎    closeBtn.Text = "Close"
-‎    closeBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-‎    closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-‎    closeBtn.MouseButton1Click:Connect(function()
-‎        ScreenGui:Destroy()
-‎    end)
-‎
-‎    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-‎end)
-
 -- Determine max value: if there's an associated MaxValue or similar, use it; otherwise use current or 100
 local function findMaxValueFor(val)
     local parent = val.Parent
