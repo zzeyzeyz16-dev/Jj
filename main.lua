@@ -18,7 +18,7 @@ local ATTACK_INTERVAL = 0.35
 -- Keep a local copy of server-sent stamina via StaminaUpdate
 local currentEnergy = 100
 local maxEnergy = 230
-local STAMINA_UPDATE = ReplicatedStorage:WaitForChild("EnergyUpdate")
+local ENERGY_UPDATE = ReplicatedStorage:WaitForChild("EnergyUpdate")
 
 STAMINA_UPDATE.OnClientEvent:Connect(function(payload)
     if type(payload) ~= "table" then return end
