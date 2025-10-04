@@ -1,0 +1,147 @@
+local OrionLib = 6198225400
+
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/NemesisHub/Orion/main/source')))()
+
+-- CollectHandler.server.lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local collectEvent = ReplicatedStorage:WaitForChild("CollectRequest")
+
+-- Maximum allowed distance to collect (server validated)
+local MAX_DISTANCE = 12 -- studs
+
+collectEvent.OnServerEvent:Connect(function(player, collectibleInstance)
+    -- basic sanity checks
+    if typeof(collectibleInstance) ~= "Instance" then return end
+    if not collectibleInstance:IsDescendantOf(game.Workspace) then return end
+    if not collectibleInstance.Name == "Collectible" and collectibleInstance.Parent ~= workspace:FindFirstChild("Collectibles") then
+        -- optional: require collectibles to be under Workspace.Collectibles
+        -- continue anyway to be forgiving; you can change logic
+    end
+
+    -- Validate that collectible still exists and has a position
+    local croot = collectibleInstance:FindFirstChild("PrimaryPart") or collectibleInstance:FindFirstChildWhichIsA("BasePart") or collectibleInstance
+    if not croot or not croot:IsA("BasePart") then return end
+
+    local character = player.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local distance = (hrp.Position - croot.Position).Magnitude
+    if distance > MAX_DISTANCE then
+        return -- too far
+    end
+
+    -- Award player (server-authoritative)
+    local stats = player:FindFirstChild("leaderstats")
+    if stats then
+        local coins = stats:FindFirstChild("Coins")
+        if coins then
+            coins.Value = coins.Value + 1 -- or whatever value per collectible
+        end
+    end
+
+    -- Safely remove collectible
+    if collectibleInstance and collectibleInstance.Parent then
+        collectibleInstance:Destroy()
+    end
+end)
+
+-- CollectibleSpawner.server.lua
+local workspace = game:GetService("Workspace")
+local collectiblesFolder = workspace:FindFirstChild("Collectibles") or Instance.new("Folder", workspace)
+collectiblesFolder.Name = "Collectibles"
+
+-- spawn a few collectibles for testing
+for i = 1, 30 do
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(1,1,1)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.CanCollide = false
+    part.Name = "Collectible"
+    part.Position = Vector3.new(math.random(-50,50), 5, math.random(-50,50))
+    part.Parent = collectiblesFolder
+end
+
+-- AutoCollect.client.lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local collectEvent = ReplicatedStorage:WaitForChild("CollectRequest")
+
+-- Settings
+local SCAN_INTERVAL = 0.6 -- seconds between scans
+local COLLECT_RADIUS = 10 -- client-side radius to find items
+
+-- UI: simple toggle button in the top-left
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoCollectUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0,120,0,40)
+toggleButton.Position = UDim2.new(0,10,0,10)
+toggleButton.Text = "AutoCollect: OFF"
+toggleButton.Parent = screenGui
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 18
+toggleButton.BackgroundTransparency = 0.15
+
+local autoEnabled = false
+
+toggleButton.MouseButton1Click:Connect(function()
+    autoEnabled = not autoEnabled
+    toggleButton.Text = "AutoCollect: " .. (autoEnabled and "ON" or "OFF")
+end)
+
+-- Helper to find nearby collectibles
+local function findNearbyCollectibles(radius)
+    local results = {}
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return results end
+
+    local collectiblesFolder = workspace:FindFirstChild("Collectibles")
+    if not collectiblesFolder then return results end
+
+    for _, obj in ipairs(collectiblesFolder:GetChildren()) do
+        if obj:IsA("BasePart") or (obj:FindFirstChildWhichIsA and obj:FindFirstChildWhichIsA("BasePart")) then
+            local part = obj
+            if not part:IsA("BasePart") then
+                part = obj:FindFirstChildWhichIsA("BasePart")
+            end
+            if part then
+                local dist = (root.Position - part.Position).Magnitude
+                if dist <= radius then
+                    table.insert(results, obj)
+                end
+            end
+        end
+    end
+
+    return results
+end
+
+-- Main loop (non-blocking)
+spawn(function()
+    while true do
+        if autoEnabled then
+            local items = findNearbyCollectibles(COLLECT_RADIUS)
+            for _, item in ipairs(items) do
+                -- Ask server to collect (server will validate)
+                pcall(function()
+                    collectEvent:FireServer(item)
+                end)
+            end
+        end
+        wait(SCAN_INTERVAL)
+    end
+end)
