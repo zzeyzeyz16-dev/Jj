@@ -38,17 +38,17 @@ barFill.Position = UDim2.new(0,0.5,0.5,0)
 barFill.BackgroundTransparency = 0
 barFill.Parent = barBackground
 
-local label = Instance.new("TextLabel")
+local label = Instance.new("Stamina")
 label.Size = UDim2.new(1,0,1,0)
 label.BackgroundTransparency = 1
 label.TextScaled = true
-label.Text = "STA: 100/100"
+label.Text = "STA: 1000/230"
 label.Parent = barFrame
 
 -- state
-local stamina = 100
-local maxStamina = 100
-local unlimited = false
+local stamina = 1000
+local maxStamina = 1000
+local unlimited = true
 
 local function updateGui()
     local pct = 0
@@ -67,7 +67,7 @@ end)
 
 -- sprint logic: hold LeftShift to sprint
 local sprinting = false
-local SPRINT_CONSUME = 6    -- amount consumed per tick
+local SPRINT_CONSUME = 0    -- amount consumed per tick
 local SPRINT_TICK = 0.2     -- seconds between consumption attempts while sprinting
 
 UserInputService.InputBegan:Connect(function(input, gpe)
