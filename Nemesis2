@@ -1,25 +1,34 @@
+-- Legends Rewritten AutoFarm (Delta Executor + Orion UI)
+-- ⚠️ Educational/testing use only. Using on public servers may risk detection/bans.
 
+-- Load Orion Library
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+
+local Window = OrionLib:MakeWindow({
+    Name = "Legends Rewritten | AutoFarm",
+    HidePremium = false,
+    SaveConfig = false
+})
+
+-- Variables
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/Nemesis2/Orion/main/source')))()
+local AutoFarm = false
+local AttackRadius = 10
+local FarmRange = 60
+local Delay = 0.15
+local TargetNames = { "NPC", "Enemy", "Mob" } -- Edit if NPC names differ
 
--- Settings
-local AttackRadius = 10     -- how close you need to be
-local FarmRange = 50        -- how far to search
-local Delay = 0.15          -- time between actions
-local TargetNames = { "NPC", "Enemy", "Mob" } -- adjust names to match game NPCs
-
--- Refresh character when respawn
+-- Refresh character
 LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
 
--- Utility
+-- Helpers
 local function getMagnitudeTo(part)
     if not (Character and Character:FindFirstChild("HumanoidRootPart")) then return math.huge end
     return (part.Position - Character.HumanoidRootPart.Position).Magnitude
@@ -29,8 +38,8 @@ local function findNearest()
     local nearest, ndist = nil, math.huge
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") then
-            for _, namePat in ipairs(TargetNames) do
-                if string.find(obj.Name:lower(), namePat:lower()) then
+            for _, pat in ipairs(TargetNames) do
+                if string.find(obj.Name:lower(), pat:lower()) then
                     local hrp = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
                     if hrp then
                         local dist = getMagnitudeTo(hrp)
@@ -47,29 +56,25 @@ local function findNearest()
 end
 
 local function moveTo(pos)
-    local humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid:MoveTo(pos)
-    end
+    local humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid:MoveTo(pos) end
 end
 
 local function equipTool()
-    for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            LocalPlayer.Character.Humanoid:EquipTool(item)
-            return item
+    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            Character.Humanoid:EquipTool(tool)
+            return tool
         end
     end
-    for _, item in ipairs(Character:GetChildren()) do
-        if item:IsA("Tool") then
-            return item
-        end
+    for _, tool in ipairs(Character:GetChildren()) do
+        if tool:IsA("Tool") then return tool end
     end
     return nil
 end
 
 local function attack(target)
-    local hrp = Character:FindFirstChild("HumanoidRootPart")
+    local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
     local tpart = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
     if hrp and tpart then
         moveTo(tpart.Position)
@@ -80,13 +85,65 @@ local function attack(target)
     end
 end
 
--- Loop
-spawn(function()
+-- Main loop
+task.spawn(function()
     while true do
-        local target = findNearest()
-        if target then
-            attack(target)
+        if AutoFarm then
+            local target = findNearest()
+            if target then
+                attack(target)
+            end
         end
-        wait(Delay)
+        task.wait(Delay)
     end
 end)
+
+-- UI
+local Tab = Window:MakeTab({
+    Name = "AutoFarm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+Tab:AddToggle({
+    Name = "Enable AutoFarm",
+    Default = false,
+    Callback = function(Value)
+        AutoFarm = Value
+    end
+})
+
+Tab:AddSlider({
+    Name = "Farm Range",
+    Min = 20,
+    Max = 150,
+    Default = FarmRange,
+    Increment = 5,
+    Callback = function(Value)
+        FarmRange = Value
+    end
+})
+
+Tab:AddSlider({
+    Name = "Attack Radius",
+    Min = 5,
+    Max = 50,
+    Default = AttackRadius,
+    Increment = 1,
+    Callback = function(Value)
+        AttackRadius = Value
+    end
+})
+
+Tab:AddSlider({
+    Name = "Attack Delay (seconds)",
+    Min = 0.05,
+    Max = 1,
+    Default = Delay,
+    Increment = 0.05,
+    Callback = function(Value)
+        Delay = Value
+    end
+})
+
+OrionLib:Init()
