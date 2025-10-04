@@ -1,138 +1,163 @@
-if game.PlaceId == 6198225400 Then
-
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nemesis2/Orion/main/source"))()
-
-local Window = OrionLib:MakeWindow({Name = "Legends Rewritten | AutoFarm",HidePremium = false,SaveConfig = false})
-
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-
-local AutoFarm = false
-local AttackRadius = 10
-local FarmRange = 60
-local Delay = 0.15
-local TargetNames = { "NPC", "Enemy", "Mob" } -- Edit if NPC names differ
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-end)
-
-local function getMagnitudeTo(part)
-    if not (Character and Character:FindFirstChild("HumanoidRootPart")) then return math.huge end
-    return (part.Position - Character.HumanoidRootPart.Position).Magnitude
+-- Orion Library Loader
+if not OrionLib then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 end
 
-local function findNearest()
-    local nearest, ndist = nil, math.huge
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            for _, pat in ipairs(TargetNames) do
-                if string.find(obj.Name:lower(), pat:lower()) then
-                    local hrp = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                    if hrp then
-                        local dist = getMagnitudeTo(hrp)
-                        if dist < ndist and dist <= FarmRange then
-                            nearest = obj
-                            ndist = dist
-                        end
-                    end
-                end
+local OrionLib = OrionLib
+local Window = OrionLib:MakeWindow({Name = "Universal Hub | By Copilot", HidePremium = false, SaveConfig = true, ConfigFolder = "CopilotUniversalHub"})
+
+-- Player Variables
+local player = game.Players.LocalPlayer
+local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+
+-- === MAIN TAB ===
+local MainTab = Window:MakeTab({
+	Name = "Main",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+MainTab:AddParagraph("Welcome!", "Universal Roblox Script Hub. Enjoy multiple features!")
+
+-- WalkSpeed Slider
+MainTab:AddSlider({
+	Name = "WalkSpeed",
+	Min = 16,
+	Max = 100,
+	Default = 16,
+	Color = Color3.fromRGB(255,255,255),
+	Increment = 1,
+	ValueName = "Speed",
+	Flag = "WalkSpeed",
+	Callback = function(val)
+		if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+			player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
+		end
+	end
+})
+
+-- JumpPower Slider
+MainTab:AddSlider({
+	Name = "JumpPower",
+	Min = 50,
+	Max = 200,
+	Default = 50,
+	Color = Color3.fromRGB(255,255,255),
+	Increment = 1,
+	ValueName = "Power",
+	Flag = "JumpPower",
+	Callback = function(val)
+		if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+			player.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
+		end
+	end
+})
+
+-- Teleport to Random Player
+MainTab:AddButton({
+	Name = "Teleport to Random Player",
+	Callback = function()
+        local players = game.Players:GetPlayers()
+        local randomPlayer = players[math.random(1,#players)]
+        if randomPlayer ~= player and randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character:MoveTo(randomPlayer.Character.HumanoidRootPart.Position + Vector3.new(2,0,2))
+            OrionLib:MakeNotification({Name = "Teleported!", Content = "You teleported to "..randomPlayer.Name, Image = "rbxassetid://4483345998", Time = 2})
+        else
+            OrionLib:MakeNotification({Name = "Teleport Failed", Content = "Couldn't find a player!", Image = "rbxassetid://4483345998", Time = 2})
+        end
+	end
+})
+
+-- === ESP TAB ===
+local ESPTab = Window:MakeTab({
+	Name = "ESP",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+local espEnabled = false
+local espConnections = {}
+
+local function addESP(plr)
+    if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(4,6,4)
+        box.AdornCullingMode = Enum.AdornCullingMode.Always
+        box.AlwaysOnTop = true
+        box.ZIndex = 10
+        box.Color3 = Color3.fromRGB(0,255,0)
+        box.Transparency = 0.5
+        box.Parent = plr.Character.HumanoidRootPart
+        espConnections[plr] = box
+    end
+end
+
+local function removeESP(plr)
+    if espConnections[plr] then
+        espConnections[plr]:Destroy()
+        espConnections[plr] = nil
+    end
+end
+
+ESPTab:AddToggle({
+	Name = "Enable ESP",
+	Default = false,
+	Callback = function(val)
+        espEnabled = val
+        if val then
+            for i,v in pairs(game.Players:GetPlayers()) do
+                addESP(v)
+            end
+            game.Players.PlayerAdded:Connect(addESP)
+            game.Players.PlayerRemoving:Connect(removeESP)
+        else
+            for i,v in pairs(espConnections) do
+                removeESP(i)
             end
         end
-    end
-    return nearest
-end
+	end
+})
 
-local function moveTo(pos)
-    local humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid:MoveTo(pos) end
-end
+-- === THEME TAB ===
+local ThemeTab = Window:MakeTab({
+	Name = "Theme",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
 
-local function equipTool()
-    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            Character.Humanoid:EquipTool(tool)
-            return tool
+ThemeTab:AddDropdown({
+	Name = "UI Theme",
+	Default = "Default",
+	Options = {"Default", "Red", "Blue", "Green", "Pink"},
+	Callback = function(theme)
+        if theme == "Red" then
+            OrionLib:SetTheme("Red")
+        elseif theme == "Blue" then
+            OrionLib:SetTheme("Blue")
+        elseif theme == "Green" then
+            OrionLib:SetTheme("Green")
+        elseif theme == "Pink" then
+            OrionLib:SetTheme("Pink")
+        else
+            OrionLib:SetTheme("Default")
         end
-    end
-    for _, tool in ipairs(Character:GetChildren()) do
-        if tool:IsA("Tool") then return tool end
-    end
-    return nil
-end
-
-local function attack(target)
-    local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
-    local tpart = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
-    if hrp and tpart then
-        moveTo(tpart.Position)
-        local tool = equipTool()
-        if tool and tool.Activate then
-            tool:Activate()
-        end
-    end
-end
-
-task.spawn(function()
-    while true do
-        if AutoFarm then
-            local target = findNearest()
-            if target then
-                attack(target)
-            end
-        end
-        task.wait(Delay)
-    end
-end)
-
-local Tab = Window:MakeTab({
-    Name = "AutoFarm",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
+	end
 })
 
-Tab:AddToggle({
-    Name = "Enable AutoFarm",
-    Default = false,
-    Callback = function(Value)
-        AutoFarm = Value
-    end
+ThemeTab:AddButton({
+	Name = "Unload UI",
+	Callback = function()
+        OrionLib:Destroy()
+	end
 })
 
-Tab:AddSlider({
-    Name = "Farm Range",
-    Min = 20,
-    Max = 150,
-    Default = FarmRange,
-    Increment = 5,
-    Callback = function(Value)
-        FarmRange = Value
-    end
+-- === CREDITS TAB ===
+local CreditsTab = Window:MakeTab({
+	Name = "Credits",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
 })
 
-Tab:AddSlider({
-    Name = "Attack Radius",
-    Min = 5,
-    Max = 50,
-    Default = AttackRadius,
-    Increment = 1,
-    Callback = function(Value)
-        AttackRadius = Value
-    end
-})
-
-Tab:AddSlider({
-    Name = "Attack Delay (seconds)",
-    Min = 0.05,
-    Max = 1,
-    Default = Delay,
-    Increment = 0.05,
-    Callback = function(Value)
-        Delay = Value
-    end
-})
+CreditsTab:AddParagraph("Made by GitHub Copilot", "Script generated and designed for universal use in Roblox games.")
 
 OrionLib:Init()
