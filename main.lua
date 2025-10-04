@@ -79,8 +79,8 @@ if not energy then
     pcall(function()
         local ScreenGui = Instance.new("ScreenGui")
         ScreenGui.Name = "EnergyRegen_NotFound"
-        ScreenGui.ResetOnSpawn = false
-        local txt = Instance.new("TextLabel", ScreenGui)
+        ScreenGui.ResetOnSpawn = true
+        local txt = Instance.new("Energy", ScreenGui)
         txt.Size = UDim2.new(0,360,0,60)
         txt.Position = UDim2.new(0.5,-180,0.1,0)
         txt.BackgroundTransparency = 0.4
