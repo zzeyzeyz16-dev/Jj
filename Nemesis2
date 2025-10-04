@@ -1,10 +1,8 @@
+if game.PlaceId == 6198225400 Then
+
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nemesis2/Orion/main/source"))()
 
-local Window = OrionLib:MakeWindow({
-    Name = "Legends Rewritten | AutoFarm",
-    HidePremium = false,
-    SaveConfig = false
-})
+local Window = OrionLib:MakeWindow({Name = "Legends Rewritten | AutoFarm",HidePremium = false,SaveConfig = false})
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
