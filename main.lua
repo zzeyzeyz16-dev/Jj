@@ -1,110 +1,38 @@
--- StarterPlayerScripts/StaminaClient (LocalScript)
+-- DefeatRake_Template.lua + Infinite Stamina (FOR YOUR OWN PLACE ONLY)
+
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
 
-local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui")
+-- Get the character and humanoid like before
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
 
--- remotes
-local REMOTE_FOLDER = ReplicatedStorage:WaitForChild("StaminaRemotes")
-local TryConsume = REMOTE_FOLDER:WaitForChild("TryConsumeStamina")
-local StaminaUpdate = REMOTE_FOLDER:WaitForChild("StaminaUpdated")
+----------------------------------------------------------------------
+-- 🔋 INFINITE STAMINA SECTION
+-- change this to the actual location of your stamina NumberValue
+-- for example: local stamina = player:WaitForChild("leaderstats"):WaitForChild("Stamina")
+----------------------------------------------------------------------
 
--- GUI setup
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "StaminaHUD"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-
-local barFrame = Instance.new("Frame")
-barFrame.Size = UDim2.new(0, 220, 0, 26)
-barFrame.Position = UDim2.new(0.5, -110, 0.92, 0)
-barFrame.BackgroundTransparency = 0.5
-barFrame.AnchorPoint = Vector2.new(0.5, 0)
-barFrame.Parent = screenGui
-
-local barBackground = Instance.new("Frame")
-barBackground.Size = UDim2.new(1, -8, 1, -8)
-barBackground.Position = UDim2.new(0,4,0,4)
-barBackground.BackgroundTransparency = 0.6
-barBackground.Parent = barFrame
-
-local barFill = Instance.new("Frame")
-barFill.Size = UDim2.new(1,0,1,0)
-barFill.AnchorPoint = Vector2.new(0,0.5)
-barFill.Position = UDim2.new(0,0.5,0.5,0)
-barFill.BackgroundTransparency = 0
-barFill.Parent = barBackground
-
-local label = Instance.new("Stamina")
-label.Size = UDim2.new(1,0,1,0)
-label.BackgroundTransparency = 1
-label.TextScaled = true
-label.Text = "STA: 1000/230"
-label.Parent = barFrame
-
--- state
-local stamina = 1000
-local maxStamina = 1000
-local unlimited = true
-
-local function updateGui()
-    local pct = 0
-    if maxStamina > 0 then pct = math.clamp(stamina / maxStamina, 0, 1) end
-    barFill.Size = UDim2.new(pct, 0, 1, 0)
-    label.Text = string.format("STA: %d / %d %s", math.floor(stamina), math.floor(maxStamina), unlimited and "(∞)" or "")
+local stamina = player:FindFirstChild("Stamina") or nil
+if stamina then
+    -- loop to top off stamina every 0.1 seconds
+    task.spawn(function()
+        while true do
+            -- if your value has .MaxValue use that, otherwise pick your full value (like 100)
+            local max = stamina:FindFirstChild("MaxValue") and stamina.MaxValue or 1000
+            stamina.Value = max
+            task.wait(100)
+        end
+    end)
 end
 
--- apply server updates
-StaminaUpdate.OnClientEvent:Connect(function(newStamina, newMax, isUnlimited)
-    stamina = tonumber(newStamina) or stamina
-    maxStamina = tonumber(newMax) or maxStamina
-    unlimited = isUnlimited or false
-    updateGui()
-end)
+-- if your stamina is actually handled in Humanoid.WalkSpeed/JumpPower instead,
+-- you can just bump those up once:
+-- humanoid.WalkSpeed = 32
+-- humanoid.JumpPower = 75
+----------------------------------------------------------------------
 
--- sprint logic: hold LeftShift to sprint
-local sprinting = false
-local SPRINT_CONSUME = 0    -- amount consumed per tick
-local SPRINT_TICK = 0.2     -- seconds between consumption attempts while sprinting
-
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.LeftShift then
-        sprinting = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input, gpe)
-    if input.KeyCode == Enum.KeyCode.LeftShift then
-        sprinting = false
-    end
-end)
-
--- loop to attempt consumption while sprinting
-spawn(function()
-    while true do
-        if sprinting then
-            -- ask server to consume; server returns true if allowed
-            local success, result = pcall(function()
-                return TryConsume:InvokeServer(SPRINT_CONSUME)
-            end)
-            if success and result == true then
-                -- server will send stamina update via event shortly; local optimistic reduce to feel responsive
-                stamina = math.max(0, stamina - SPRINT_CONSUME)
-                updateGui()
-                -- you could apply sprint speed changes here (Local) — but authoritative movement should be designed safely
-            else
-                -- can't sprint (not enough stamina / denied)
-                sprinting = false
-            end
-            wait(SPRINT_TICK)
-        else
-            wait(0.1)
-        end
-    end
-end)
-
--- initial GUI update
-updateGui()
+-- the rest of your auto-fight script goes here (unchanged)
+-- … (the GUI code and auto-fight loop from earlier)
