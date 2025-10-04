@@ -1,165 +1,174 @@
--- AutoFightLocal (StarterPlayerScripts)
--- Local testing auto-fight (for your own place). It checks player's Stamina NumberValue before attacking.
+-- Defeat Some Rake — Energy Regeneration (local override)
+-- Paste into your exploit/exec environment.
+-- Simple, robust: tries to find an "Energy" / "Stamina" NumberValue and keep it at max.
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local hrp = character:WaitForChild("HumanoidRootPart")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
 
--- Optional: edit this to point to where your NPCs live (workspace.Enemies etc.)
-local SEARCH_ROOT = workspace
-local TARGET_NAME_CONTAINS = "Rake"
-local MOVE_TIMEOUT = 8
-local ATTACK_INTERVAL = 0.35
-
--- Keep a local copy of server-sent stamina via StaminaUpdate
-local currentEnergy = 230
-local maxEnergy = 230
-local ENERGY_UPDATE = ReplicatedStorage:WaitForChild("EnergyUpdate")
-
-STAMINA_UPDATE.OnClientEvent:Connect(function(payload)
-    if type(payload) ~= "table" then return end
-    currentStamina = payload.value or currentStamina
-    maxStamina = payload.max or maxStamina
-end)
-
-local AUTO_FIGHT = false
-
--- Simple UI toggle (very small)
-local function createToggleUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "AutoFightUI"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-
-    local frame = Instance.new("Frame", screenGui)
-    frame.Size = UDim2.new(0, 220, 0, 88)
-    frame.Position = UDim2.new(0, 20, 0, 120)
-    frame.BackgroundTransparency = 0.2
-    frame.BorderSizePixel = 0
-
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -10, 0, 28)
-    title.Position = UDim2.new(0, 5, 0, 5)
-    title.Text = "AutoFight (TEST)"
-    title.BackgroundTransparency = 1
-    title.TextColor3 = Color3.new(1,1,1)
-
-    local startBtn = Instance.new("TextButton", frame)
-    startBtn.Size = UDim2.new(0.48, -6, 0, 30)
-    startBtn.Position = UDim2.new(0, 5, 0, 36)
-    startBtn.Text = "Start"
-    startBtn.MouseButton1Click:Connect(function()
-        AUTO_FIGHT = true
-    end)
-
-    local stopBtn = Instance.new("TextButton", frame)
-    stopBtn.Size = UDim2.new(0.48, -6, 0, 30)
-    stopBtn.Position = UDim2.new(0.52, 1, 0, 36)
-    stopBtn.Text = "Stop"
-    stopBtn.MouseButton1Click:Connect(function()
-        AUTO_FIGHT = false
-    end)
+if not LocalPlayer then
+    warn("[EnergyRegen] LocalPlayer not found (must run as a Local Script in an exploit).")
+    return
 end
 
-createToggleUI()
+-- Config
+local CHECK_INTERVAL = 0.35   -- how often to enforce (seconds)
+local PREFERRED_NAMES = {"Energy","Stamina","Mana","EnergyValue","EP","Stam"} -- names to look for
 
-local function findNearestRake()
-    local nearest = nil
-    local nearestDist = math.huge
-    for _, obj in ipairs(SEARCH_ROOT:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name:lower():find(TARGET_NAME_CONTAINS:lower()) then
-            local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-            if rootPart then
-                local dist = (rootPart.Position - hrp.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearest = obj
+-- Utility: recursively find NumberValue/IntValue that matches a name (case-insensitive)
+local function findEnergyValue(root)
+    for _, name in ipairs(PREFERRED_NAMES) do
+        local v = root:FindFirstChild(name, true) -- fast path if exists directly under root
+        if v and (v:IsA("NumberValue") or v:IsA("IntValue") or v:IsA("NumberValue")) then
+            return v
+        end
+    end
+    -- fallback: scan children for any numeric instance that probably indicates energy
+    local queue = {root}
+    while #queue > 0 do
+        local node = table.remove(queue, 1)
+        for _, child in ipairs(node:GetChildren()) do
+            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                local cname = child.Name:lower()
+                for _, name in ipairs(PREFERRED_NAMES) do
+                    if cname:find(name:lower()) then
+                        return child
+                    end
                 end
             end
-        end
-    end
-    return nearest, nearestDist
-end
-
-local function equipBestTool()
-    for _, item in ipairs(character:GetChildren()) do
-        if item:IsA("Tool") then
-            item.Parent = character
-            return item
-        end
-    end
-    local backpack = player:FindFirstChildOfClass("Backpack")
-    if backpack then
-        for _, item in ipairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                item.Parent = character
-                return item
-            end
+            table.insert(queue, child)
         end
     end
     return nil
 end
 
-local function moveToPosition(position, timeout)
-    humanoid:MoveTo(position)
-    local start = tick()
-    while tick() - start < (timeout or MOVE_TIMEOUT) do
-        if (hrp.Position - position).Magnitude < 6 then
-            return true
-        end
-        task.wait(0.2)
+-- Look into Player first (common places)
+local function tryFind()
+    -- 1) leaderstats
+    if LocalPlayer:FindFirstChild("leaderstats") then
+        local v = findEnergyValue(LocalPlayer.leaderstats)
+        if v then return v end
     end
-    return false
+    -- 2) Player values
+    local v = findEnergyValue(LocalPlayer)
+    if v then return v end
+    -- 3) Character
+    if LocalPlayer.Character then
+        local cv = findEnergyValue(LocalPlayer.Character)
+        if cv then return cv end
+    end
+    -- 4) PlayerGui (some games keep a client value)
+    if LocalPlayer:FindFirstChild("PlayerGui") then
+        local gv = findEnergyValue(LocalPlayer.PlayerGui)
+        if gv then return gv end
+    end
+    return nil
 end
 
-local function attackTarget(loopUntilDead, targetModel)
-    if not targetModel then return end
-    local tool = equipBestTool()
-    if not tool then return end
-    while AUTO_FIGHT do
-        -- stop attacking if stamina is 0 (unless server infinite is on; server keeps stamina at max then)
-        if currentStamina <= 0 then break end
-        local targetHum = targetModel:FindFirstChildWhichIsA("Humanoid")
-        if loopUntilDead and (not targetHum or targetHum.Health <= 0) then break end
-        pcall(function()
-            if tool.Parent == character then
-                tool:Activate()
-            end
-        end)
-        task.wait(ATTACK_INTERVAL)
-    end
+-- Attempt to find energy value (try a few times)
+local energy = tryFind()
+local tries = 0
+while not energy and tries < 6 do
+    tries = tries + 1
+    wait(0.6)
+    energy = tryFind()
 end
 
--- Main loop
-spawn(function()
-    while true do
-        if AUTO_FIGHT and character and humanoid and hrp.Parent then
-            -- only start auto-fight if stamina > 0 (or infinite toggle on server will keep it >0)
-            if currentStamina > 0 then
-                local target, dist = findNearestRake()
-                if target then
-                    local root = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
-                    if root then
-                        local pos = root.Position + (hrp.CFrame.LookVector * -3)
-                        local moved = moveToPosition(pos, MOVE_TIMEOUT)
-                        if moved then
-                            attackTarget(true, target)
-                        end
-                    end
+if not energy then
+    warn("[EnergyRegen] Couldn't automatically find an energy/stamina NumberValue.")
+    -- show a small Gui prompt for manual
+    pcall(function()
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "EnergyRegen_NotFound"
+        ScreenGui.ResetOnSpawn = false
+        local txt = Instance.new("TextLabel", ScreenGui)
+        txt.Size = UDim2.new(0,360,0,60)
+        txt.Position = UDim2.new(0.5,-180,0.1,0)
+        txt.BackgroundTransparency = 0.4
+        txt.Text = "Energy value not found automatically.\nOpen Explorer and set 'energy' variable manually."
+        txt.TextWrapped = true
+        txt.TextScaled = true
+        txt.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        txt.TextColor3 = Color3.fromRGB(255,255,255)
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end)
+    return
+end
+
+-- Determine max value: if there's an associated MaxValue or similar, use it; otherwise use current or 100
+local function findMaxValueFor(val)
+    local parent = val.Parent
+    if parent then
+        for _, sibling in ipairs(parent:GetChildren()) do
+            if (sibling ~= val) and (sibling:IsA("NumberValue") or sibling:IsA("IntValue")) then
+                local lname = sibling.Name:lower()
+                if lname:find("max") or lname:find("maxenergy") or lname:find("maxstam") or lname:find("limit") then
+                    return sibling.Value
                 end
             end
         end
-        task.wait(0.6)
+    end
+    -- Check attributes (some games use attributes)
+    local attr = val:GetAttribute("Max") or val:GetAttribute("MaxValue") or val:GetAttribute("MaxEnergy")
+    if attr then return attr end
+    -- fallback: if value looks like percent (0-100) use 100, else default to current or 100
+    if val.Value <= 100 then
+        return 100
+    end
+    return val.Value
+end
+
+local maxEnergy = findMaxValueFor(energy)
+if type(maxEnergy) ~= "number" or maxEnergy <= 0 then
+    maxEnergy = energy.Value > 0 and energy.Value or 100
+end
+
+-- Toggle control
+local enabled = true
+
+-- Optional simple Bindable UI: press RightControl + E to toggle
+pcall(function()
+    local UserInput = game:GetService("UserInputService")
+    UserInput.InputBegan:Connect(function(inp, gameProcessed)
+        if gameProcessed then return end
+        if inp.KeyCode == Enum.KeyCode.E and UserInput:IsKeyDown(Enum.KeyCode.RightControl) then
+            enabled = not enabled
+            print(("[EnergyRegen] Toggled %s"):format(enabled and "ON" or "OFF"))
+        end
+    end)
+end)
+
+-- Try to prevent local writes that set it lower by hooking __newindex if available (best-effort; exploit function)
+local hooked = false
+if (type(hookmetamethod) == "function") then
+    local old = hookmetamethod(game, "__newindex", function(t,k,v)
+        -- protect the energy Value instance from being set to something less than our target
+        if t == energy and tostring(k) == "Value" then
+            if not enabled then
+                return old(t,k,v)
+            end
+            if type(v) == "number" and v < maxEnergy then
+                -- block the write
+                return nil
+            end
+        end
+        return old(t,k,v)
+    end)
+    hooked = true
+end
+
+-- Main enforcement loop
+spawn(function()
+    while true do
+        if enabled and energy and energy.Parent then
+            pcall(function()
+                -- some games use fractional values, enforce full
+                energy.Value = maxEnergy
+            end)
+        end
+        wait(CHECK_INTERVAL)
     end
 end)
 
--- handle respawn
-player.CharacterAdded:Connect(function(char)
-    character = char
-    humanoid = char:WaitForChild("Humanoid")
-    hrp = char:WaitForChild("HumanoidRootPart")
-end)
+-- feedback
+print(("[EnergyRegen] Running. Energy instance = %s (parent: %s). Max enforced = %s. Hooked newindex = %s")
+      :format(energy:GetFullName(), energy.Parent and energy.Parent:GetFullName() or "nil", tostring(maxEnergy), tostring(hooked)))
