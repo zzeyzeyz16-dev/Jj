@@ -1,0 +1,92 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/Nemesis2/Orion/main/source')))()
+
+-- Settings
+local AttackRadius = 10     -- how close you need to be
+local FarmRange = 50        -- how far to search
+local Delay = 0.15          -- time between actions
+local TargetNames = { "NPC", "Enemy", "Mob" } -- adjust names to match game NPCs
+
+-- Refresh character when respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+end)
+
+-- Utility
+local function getMagnitudeTo(part)
+    if not (Character and Character:FindFirstChild("HumanoidRootPart")) then return math.huge end
+    return (part.Position - Character.HumanoidRootPart.Position).Magnitude
+end
+
+local function findNearest()
+    local nearest, ndist = nil, math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            for _, namePat in ipairs(TargetNames) do
+                if string.find(obj.Name:lower(), namePat:lower()) then
+                    local hrp = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                    if hrp then
+                        local dist = getMagnitudeTo(hrp)
+                        if dist < ndist and dist <= FarmRange then
+                            nearest = obj
+                            ndist = dist
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function moveTo(pos)
+    local humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:MoveTo(pos)
+    end
+end
+
+local function equipTool()
+    for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            LocalPlayer.Character.Humanoid:EquipTool(item)
+            return item
+        end
+    end
+    for _, item in ipairs(Character:GetChildren()) do
+        if item:IsA("Tool") then
+            return item
+        end
+    end
+    return nil
+end
+
+local function attack(target)
+    local hrp = Character:FindFirstChild("HumanoidRootPart")
+    local tpart = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+    if hrp and tpart then
+        moveTo(tpart.Position)
+        local tool = equipTool()
+        if tool and tool.Activate then
+            tool:Activate()
+        end
+    end
+end
+
+-- Loop
+spawn(function()
+    while true do
+        local target = findNearest()
+        if target then
+            attack(target)
+        end
+        wait(Delay)
+    end
+end)
