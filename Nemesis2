@@ -1,163 +1,152 @@
--- Orion Library Loader
-if not OrionLib then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+-- Universal Roblox GUI Script Template
+-- Place this LocalScript in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 300)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Tab Buttons
+local tabs = {"Player", "World", "Settings"}
+local tabFrames = {}
+local tabButtons = {}
+
+for i, tabName in ipairs(tabs) do
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0, 120, 0, 30)
+    tabBtn.Position = UDim2.new(0, (i-1)*125, 0, 0)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    tabBtn.Text = tabName
+    tabBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    tabBtn.Parent = mainFrame
+    tabButtons[tabName] = tabBtn
+
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Size = UDim2.new(1, 0, 1, -35)
+    tabFrame.Position = UDim2.new(0, 0, 0, 35)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.Visible = (i == 1)
+    tabFrame.Parent = mainFrame
+    tabFrames[tabName] = tabFrame
 end
 
-local OrionLib = OrionLib
-local Window = OrionLib:MakeWindow({Name = "Universal Hub | By Copilot", HidePremium = false, SaveConfig = true, ConfigFolder = "CopilotUniversalHub"})
-
--- Player Variables
-local player = game.Players.LocalPlayer
-local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-
--- === MAIN TAB ===
-local MainTab = Window:MakeTab({
-	Name = "Main",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
-
-MainTab:AddParagraph("Welcome!", "Universal Roblox Script Hub. Enjoy multiple features!")
-
--- WalkSpeed Slider
-MainTab:AddSlider({
-	Name = "WalkSpeed",
-	Min = 16,
-	Max = 100,
-	Default = 16,
-	Color = Color3.fromRGB(255,255,255),
-	Increment = 1,
-	ValueName = "Speed",
-	Flag = "WalkSpeed",
-	Callback = function(val)
-		if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-			player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
-		end
-	end
-})
-
--- JumpPower Slider
-MainTab:AddSlider({
-	Name = "JumpPower",
-	Min = 50,
-	Max = 200,
-	Default = 50,
-	Color = Color3.fromRGB(255,255,255),
-	Increment = 1,
-	ValueName = "Power",
-	Flag = "JumpPower",
-	Callback = function(val)
-		if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-			player.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
-		end
-	end
-})
-
--- Teleport to Random Player
-MainTab:AddButton({
-	Name = "Teleport to Random Player",
-	Callback = function()
-        local players = game.Players:GetPlayers()
-        local randomPlayer = players[math.random(1,#players)]
-        if randomPlayer ~= player and randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            player.Character:MoveTo(randomPlayer.Character.HumanoidRootPart.Position + Vector3.new(2,0,2))
-            OrionLib:MakeNotification({Name = "Teleported!", Content = "You teleported to "..randomPlayer.Name, Image = "rbxassetid://4483345998", Time = 2})
-        else
-            OrionLib:MakeNotification({Name = "Teleport Failed", Content = "Couldn't find a player!", Image = "rbxassetid://4483345998", Time = 2})
+-- Tab Switching Functionality
+for tabName, tabBtn in pairs(tabButtons) do
+    tabBtn.MouseButton1Click:Connect(function()
+        for t, frame in pairs(tabFrames) do
+            frame.Visible = (t == tabName)
         end
-	end
-})
+    end)
+end
 
--- === ESP TAB ===
-local ESPTab = Window:MakeTab({
-	Name = "ESP",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+-------------------------
+-- PLAYER TAB FEATURES --
+-------------------------
+do
+    local frame = tabFrames["Player"]
+    
+    -- Walkspeed Button
+    local wsBtn = Instance.new("TextButton")
+    wsBtn.Size = UDim2.new(0, 180, 0, 40)
+    wsBtn.Position = UDim2.new(0, 20, 0, 10)
+    wsBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
+    wsBtn.Text = "Set WalkSpeed: 50"
+    wsBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    wsBtn.Parent = frame
+    wsBtn.MouseButton1Click:Connect(function()
+        local char = player.Character or player.CharacterAdded:Wait()
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 50
+        end
+    end)
 
-local espEnabled = false
-local espConnections = {}
+    -- JumpPower Button
+    local jpBtn = Instance.new("TextButton")
+    jpBtn.Size = UDim2.new(0, 180, 0, 40)
+    jpBtn.Position = UDim2.new(0, 20, 0, 60)
+    jpBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+    jpBtn.Text = "Set JumpPower: 100"
+    jpBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    jpBtn.Parent = frame
+    jpBtn.MouseButton1Click:Connect(function()
+        local char = player.Character or player.CharacterAdded:Wait()
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = 100
+        end
+    end)
+end
 
-local function addESP(plr)
-    if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-        local box = Instance.new("BoxHandleAdornment")
-        box.Size = Vector3.new(4,6,4)
-        box.AdornCullingMode = Enum.AdornCullingMode.Always
-        box.AlwaysOnTop = true
-        box.ZIndex = 10
-        box.Color3 = Color3.fromRGB(0,255,0)
-        box.Transparency = 0.5
-        box.Parent = plr.Character.HumanoidRootPart
-        espConnections[plr] = box
+-------------------------
+-- WORLD TAB FEATURES --
+-------------------------
+do
+    local frame = tabFrames["World"]
+
+    -- Remove Fog Button
+    local fogBtn = Instance.new("TextButton")
+    fogBtn.Size = UDim2.new(0, 180, 0, 40)
+    fogBtn.Position = UDim2.new(0, 20, 0, 10)
+    fogBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    fogBtn.Text = "Remove Fog"
+    fogBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    fogBtn.Parent = frame
+    fogBtn.MouseButton1Click:Connect(function()
+        game.Lighting.FogEnd = 100000
+    end)
+
+    -- Set Time Button
+    local timeBtn = Instance.new("TextButton")
+    timeBtn.Size = UDim2.new(0, 180, 0, 40)
+    timeBtn.Position = UDim2.new(0, 20, 0, 60)
+    timeBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 60)
+    timeBtn.Text = "Set Time: Noon"
+    timeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    timeBtn.Parent = frame
+    timeBtn.MouseButton1Click:Connect(function()
+        game.Lighting.TimeOfDay = "12:00:00"
+    end)
+end
+
+-------------------------
+-- SETTINGS TAB FEATURES --
+-------------------------
+do
+    local frame = tabFrames["Settings"]
+
+    -- Toggle GUI Button
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 180, 0, 40)
+    toggleBtn.Position = UDim2.new(0, 20, 0, 10)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 100)
+    toggleBtn.Text = "Toggle GUI"
+    toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    toggleBtn.Parent = frame
+
+    local visible = true
+    toggleBtn.MouseButton1Click:Connect(function()
+        visible = not visible
+        mainFrame.Visible = visible
+    end)
+end
+
+-- Optionally, add a keybind to toggle UI (e.g., press 'F')
+game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.F then
+        mainFrame.Visible = not mainFrame.Visible
     end
-end
+end)
 
-local function removeESP(plr)
-    if espConnections[plr] then
-        espConnections[plr]:Destroy()
-        espConnections[plr] = nil
-    end
-end
-
-ESPTab:AddToggle({
-	Name = "Enable ESP",
-	Default = false,
-	Callback = function(val)
-        espEnabled = val
-        if val then
-            for i,v in pairs(game.Players:GetPlayers()) do
-                addESP(v)
-            end
-            game.Players.PlayerAdded:Connect(addESP)
-            game.Players.PlayerRemoving:Connect(removeESP)
-        else
-            for i,v in pairs(espConnections) do
-                removeESP(i)
-            end
-        end
-	end
-})
-
--- === THEME TAB ===
-local ThemeTab = Window:MakeTab({
-	Name = "Theme",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
-
-ThemeTab:AddDropdown({
-	Name = "UI Theme",
-	Default = "Default",
-	Options = {"Default", "Red", "Blue", "Green", "Pink"},
-	Callback = function(theme)
-        if theme == "Red" then
-            OrionLib:SetTheme("Red")
-        elseif theme == "Blue" then
-            OrionLib:SetTheme("Blue")
-        elseif theme == "Green" then
-            OrionLib:SetTheme("Green")
-        elseif theme == "Pink" then
-            OrionLib:SetTheme("Pink")
-        else
-            OrionLib:SetTheme("Default")
-        end
-	end
-})
-
-ThemeTab:AddButton({
-	Name = "Unload UI",
-	Callback = function()
-        OrionLib:Destroy()
-	end
-})
-
--- === CREDITS TAB ===
-local CreditsTab = Window:MakeTab({
-	Name = "Credits",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
-
-CreditsTab:AddParagraph("Made by GitHub Copilot", "Script generated and designed for universal use in Roblox games.")
-
-OrionLib:Init()
+-- End of Universal GUI Script Template
