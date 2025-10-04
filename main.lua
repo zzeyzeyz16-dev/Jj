@@ -16,7 +16,7 @@ local MOVE_TIMEOUT = 8
 local ATTACK_INTERVAL = 0.35
 
 -- Keep a local copy of server-sent stamina via StaminaUpdate
-local currentEnergy = 100
+local currentEnergy = 230
 local maxEnergy = 230
 local ENERGY_UPDATE = ReplicatedStorage:WaitForChild("EnergyUpdate")
 
