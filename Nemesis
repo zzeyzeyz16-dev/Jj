@@ -1,99 +1,16 @@
-game.Players.PlayerAdded:Connect(function(player)
-    local leaderstats = Instance.new("Folder")
-    leaderstats.Name = "leaderstats"
-    leaderstats.Parent = player
+local thisPlaceId = 6198225400
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/NemesisHub/Orion/main/source')))()
 
-    local coins = Instance.new("IntValue")
-    coins.Name = "Coins"
-    coins.Value = 0
-    coins.Parent = leaderstats
-end)
+local Window = OrionLib:MakeWindow({Name = "Nemesis", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local collectEvent = ReplicatedStorage:WaitForChild("CollectRequest")
+local Tab = Window:MakeTab({
+	Name = "Farm",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
 
-local MAX_DISTANCE = 12
-
-collectEvent.OnServerEvent:Connect(function(player, collectible)
-    if typeof(collectible) ~= "Instance" or not collectible:IsDescendantOf(workspace) then return end
-
-    local croot = collectible:IsA("BasePart") and collectible or collectible:FindFirstChildWhichIsA("BasePart")
-    if not croot then return end
-
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    if (hrp.Position - croot.Position).Magnitude > MAX_DISTANCE then return end
-
-    local stats = player:FindFirstChild("leaderstats")
-    local coins = stats and stats:FindFirstChild("Coins")
-    if coins then coins.Value += 1 end
-
-    collectible:Destroy()
-end)
-
-local workspace = game:GetService("Workspace")
-local folder = workspace:FindFirstChild("Collectibles") or Instance.new("Folder", workspace)
-folder.Name = "Collectibles"
-
-for i = 1, 30 do
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(1,1,1)
-    part.Shape = Enum.PartType.Ball
-    part.Anchored = true
-    part.CanCollide = false
-    part.Name = "Collectible"
-    part.Position = Vector3.new(math.random(-50,50), 5, math.random(-50,50))
-    part.Parent = folder
-end
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local player = game:GetService("Players").LocalPlayer
-local collectEvent = ReplicatedStorage:WaitForChild("CollectRequest")
-
-local SCAN_INTERVAL = 0.6
-local COLLECT_RADIUS = 10
-local autoEnabled = false
-
--- UI
-local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "AutoCollectUI"
-screenGui.ResetOnSpawn = false
-
-local toggle = Instance.new("TextButton", screenGui)
-toggle.Size = UDim2.new(0,120,0,40)
-toggle.Position = UDim2.new(0,10,0,10)
-toggle.Text = "AutoCollect: OFF"
-
-toggle.MouseButton1Click:Connect(function()
-    autoEnabled = not autoEnabled
-    toggle.Text = "AutoCollect: " .. (autoEnabled and "ON" or "OFF")
-end)
-
-local function findNearby(radius)
-    local results = {}
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return results end
-
-    local folder = workspace:FindFirstChild("Collectibles")
-    if not folder then return results end
-
-    for _, obj in ipairs(folder:GetChildren()) do
-        local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
-        if part and (root.Position - part.Position).Magnitude <= radius then
-            table.insert(results, obj)
-        end
-    end
-    return results
-end
-
-task.spawn(function()
-    while true do
-        if autoEnabled then
-            for _, item in ipairs(findNearby(COLLECT_RADIUS)) do
-                collectEvent:FireServer(item)
-            end
-        end
-        task.wait(SCAN_INTERVAL)
-    end
-end)
+--[[
+Name = <string> - The name of the tab.
+Icon = <string> - The icon of the tab.
+PremiumOnly = <bool> - Makes the tab accessible to Sirus Premium users only.
+]]
