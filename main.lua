@@ -11,7 +11,7 @@ if not LocalPlayer then
 end
 
 -- Config
-local CHECK_INTERVAL = 0.35   -- how often to enforce (seconds)
+local CHECK_INTERVAL = 0.1   -- how often to enforce (seconds)
 local PREFERRED_NAMES = {"Energy","Stamina","Mana","EnergyValue","EP","Stam"} -- names to look for
 
 -- Utility: recursively find NumberValue/IntValue that matches a name (case-insensitive)
