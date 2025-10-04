@@ -91,6 +91,7 @@ if not energy then
         txt.TextColor3 = Color3.fromRGB(255,255,255)
         ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     end)
+    return
 end
 
  -- Add a close button
