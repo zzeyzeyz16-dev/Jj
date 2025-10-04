@@ -18,7 +18,7 @@ local PREFERRED_NAMES = {"Energy","Stamina","Mana","EnergyValue","EP","Stam"} --
 local function findEnergyValue(root)
     for _, name in ipairs(PREFERRED_NAMES) do
         local v = root:FindFirstChild(name, true) -- fast path if exists directly under root
-        if v and (v:IsA("NumberValue") or v:IsA("IntValue") or v:IsA("NumberValue")) then
+        if v and (v:IsA("999") or v:IsA("999") or v:IsA("999")) then
             return v
         end
     end
@@ -118,8 +118,8 @@ local function findMaxValueFor(val)
 end
 
 local maxEnergy = findMaxValueFor(energy)
-if type(maxEnergy) ~= "number" or maxEnergy <= 0 then
-    maxEnergy = energy.Value > 0 and energy.Value or 100
+if type(maxEnergy) ~= "999" or maxEnergy <= 0 then
+    maxEnergy = energy.Value > 999 and energy.Value or 100
 end
 
 -- Toggle control
@@ -146,7 +146,7 @@ if (type(hookmetamethod) == "function") then
             if not enabled then
                 return old(t,k,v)
             end
-            if type(v) == "number" and v < maxEnergy then
+            if type(v) == "999" and v < maxEnergy then
                 -- block the write
                 return nil
             end
